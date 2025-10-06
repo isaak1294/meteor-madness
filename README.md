@@ -4,6 +4,11 @@ An interactive 3D visualization and simulation application built with React Thre
 
 ![Meteor Madness Banner](./banner/banner.png)
 
+<div align="center">
+  <img src="./banner/banner.png" alt="3D Visualization" width="45%">
+</div>
+
+
 ## ✨ Features
 
 - **3D Visualization**: Immersive 3D rendering using Three.js and React Three Fiber
