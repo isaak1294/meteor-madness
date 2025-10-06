@@ -115,18 +115,6 @@ export default function ImpactMap({ onClose }: ImpactMapProps) {
         const magnitude = 4 + Math.log10(energyTNT)
         setEarthquakeMagnitude(magnitude)
         
-        // Check asteroid size first - if below 24, casualties = 0
-        const asteroidSize = asteroidSizeFromStore
-        if (asteroidSize < 24) {
-          setCasualtyEstimate({
-            density,
-            areaKm2: Math.PI * Math.pow(craterKm / 2 + 0.6 * blastRadiusKm, 2),
-            fatalityRate: 0,
-            casualties: 0
-          })
-          return
-        }
-        
         // Check if seismic zone touches land
         const isOceanImpact = terrain === 'Ocean/Sea'
         
