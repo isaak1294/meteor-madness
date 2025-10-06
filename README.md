@@ -2,10 +2,9 @@
 
 An interactive 3D visualization and simulation application built with React Three Fiber for exploring meteor and asteroid data.
 
-![Meteor Madness Banner](./banner/banner.png)
 
 <div align="center">
-  <img src="./banner/banner.png" alt="3D Visualization" width="45%">
+  <img src="./banner/Banner.png" alt="3D Visualization" width="45%">
 </div>
 
 
