@@ -47,15 +47,8 @@ npm install -D typescript ts-node nodemon @types/node @types/express
 
 ### Running the Application
 
-**Frontend:**
 ```bash
 npm run dev
-```
-
-**Backend:**
-```bash
-# Instructions for running the backend server
-# Add your specific backend start command here
 ```
 
 ## Tech Stack
