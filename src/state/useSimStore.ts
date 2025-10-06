@@ -155,7 +155,7 @@ export const useSimStore = create<SimState>((set, get) => {
 
   const base = {
     time: 0,
-    duration: 10,
+    duration: 5,
     running: false,
     size: 120,
     speed: 18,
