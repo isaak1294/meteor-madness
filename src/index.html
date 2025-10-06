@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Asteroid Defender — Single File</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --panel: rgba(16, 22, 35, .65);
+      --border: rgba(255, 255, 255, .08);
+      --text: #e7edf7;
+      --accent: #66e0ff;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #0b0f1a;
+      font: 14px/1.4 Inter, system-ui, Arial;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    canvas {
+      display: block
+    }
+
+    /* UI */
+    .panel {
+      position: absolute;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px) saturate(120%);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+      padding: 12px;
+      pointer-events: auto;
+    }
+
+    .topbar {
+      left: 24px;
+      right: 24px;
+      top: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      font-weight: 800;
+      letter-spacing: .5px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, .04);
+    }
+
+    .modes {
+      display: flex;
+      gap: 8px
+    }
+
+    .btn {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02));
+    }
+
+    .btn.active {
+      outline: 2px solid var(--accent);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
+    .label {
+      opacity: .8;
+      font-size: 12px
+    }
+
+    .value {
+      opacity: .9;
+      font-size: 12px
+    }
+
+    input[type=range] {
+      width: 100%
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px
+    }
+
+    .legend span {
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      opacity: .85
+    }
+
+    .control {
+      left: 24px;
+      bottom: 24px;
+      width: 380px
+    }
+
+    .mitigation {
+      right: 24px;
+      bottom: 24px;
+      width: 380px
+    }
+
+    .stats {
+      right: 24px;
+      top: 72px;
+      width: 300px
+    }
+
+    .footer {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 8px;
+      opacity: .6;
+      font-size: 12px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <canvas id="c"></canvas>
+
+    <!-- UI -->
+    <div class="panel topbar">
+      <div class="brand">ASTEROID DEFENDER</div>
+      <div class="modes">
+        <button class="btn" data-mode="scenario">SCENARIO</button>
+        <button class="btn" data-mode="defend">DEFEND</button>
+        <button class="btn" data-mode="story">STORY</button>
+      </div>
+      <div style="display:flex; gap:8px">
+        <button id="startBtn" class="btn">Start</button>
+        <button id="resetBtn" class="btn">Reset</button>
+      </div>
+    </div>
+
+    <div class="panel control">
+      <div class="row"><span class="label">Asteroid Size (m)</span><span class="value" id="vSize">120</span></div>
+      <input id="size" type="range" min="10" max="1000" step="1" value="120" />
+      <div class="row"><span class="label">Speed (km/s)</span><span class="value" id="vSpeed">18.0</span></div>
+      <input id="speed" type="range" min="5" max="70" step="0.1" value="18" />
+      <div class="row"><span class="label">Approach Angle (°)</span><span class="value" id="vAng">35</span></div>
+      <input id="angle" type="range" min="5" max="85" step="1" value="35" />
+      <div class="row"><span class="label">Density (kg/m³)</span><span class="value" id="vDen">3000</span></div>
+      <input id="density" type="range" min="500" max="7000" step="100" value="3000" />
+      <div class="row"><span class="label">Time</span><span class="value"><span id="vTime">0.0</span> / <span
+            id="vDuration">120</span>s</span></div>
+      <input id="timeScrub" type="range" min="0" max="120" step="0.1" value="0" />
+    </div>
+
+    <div class="panel mitigation">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px">
+        <button id="mitKinetic" class="btn active">Kinetic</button>
+        <button id="mitTractor" class="btn">Gravity Tractor</button>
+        <button id="mitLaser" class="btn">Laser Ablation</button>
+      </div>
+      <div class="row" style="margin-top:8px"><span class="label">Power</span><span class="value"
+          id="vPower">0.50</span></div>
+      <input id="power" type="range" min="0" max="1" step="0.01" value="0.5" />
+      <div class="row"><span class="label">Lead Time (s)</span><span class="value" id="vLead">15</span></div>
+      <input id="lead" type="range" min="0" max="60" step="1" value="15" />
+      <div class="legend"><span>Δv nudge</span><span>Orbit tug</span><span>Beam ablation</span></div>
+    </div>
+
+    <div class="panel stats">
+      <div class="row"><span class="label">Speed</span><span class="value" id="sSpeed">18.0 km/s</span></div>
+      <div class="row"><span class="label">Size</span><span class="value" id="sSize">120.0 m</span></div>
+      <div class="row"><span class="label">Density</span><span class="value" id="sDen">3000 kg/m³</span></div>
+      <div class="row"><span class="label">ETA</span><span class="value" id="sETA">60.0 s</span></div>
+      <div class="row"><span class="label">Energy</span><span class="value" id="sEnergy">1.20 Mt TNT</span></div>
+      <div class="row"><span class="label">Crater Size</span><span class="value" id="sCrater">1.10 km</span></div>
+      <div class="legend"><span>Blast</span><span>Seismic</span><span>Tsunami</span></div>
+    </div>
+
+    <div class="footer">Left-drag: rotate • Mouse wheel: zoom • Right-drag: pan</div>
+  </div>
+
+  <script type="module">
+    /* ===== Imports ===== */
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import { EffectComposer } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+
+    /* ===== Helpers ===== */
+    const rad = (deg) => deg * Math.PI / 180;
+    function latLonToVector3(lat, lon, radius = 1) {
+      const phi = rad(90 - lat), theta = rad(lon + 180);
+      const x = -(radius * Math.sin(phi) * Math.cos(theta));
+      const z = (radius * Math.sin(phi) * Math.sin(theta));
+      const y = radius * Math.cos(phi);
+      return new THREE.Vector3(x, y, z);
+    }
+    function estimateEnergyMtTNT(size_m, density, speed_kms) {
+      const r = size_m / 2, vol = 4 / 3 * Math.PI * r * r * r, mass = density * vol, v = speed_kms * 1000;
+      return 0.5 * mass * v * v / 4.184e15; // Mt TNT
+    }
+    function craterSizeKm(E_Mt) { return 0.02 * Math.cbrt(E_Mt * 1e6); } // educational scaling
+    function simplePathAtTime({ time, duration, approachAngleDeg, leadTime, mitigation, mitigationPower }) {
+      const baseLat = 10, baseLon = 70;
+      let driftLat = 0, driftLon = 0;
+      const apply = time > (duration - Math.max(1, leadTime));
+      if (apply) {
+        const tNorm = (time - (duration - leadTime)) / Math.max(1, leadTime);
+        const power = mitigationPower * tNorm;
+        if (mitigation === 'kinetic') { driftLat += power * 5; driftLon += power * 8; }
+        if (mitigation === 'tractor') { driftLat += power * 3; driftLon += power * 3; }
+        if (mitigation === 'laser') { driftLat += power * 7; driftLon += power * 2; }
+      }
+      const angleBias = (approachAngleDeg - 45) / 90;
+      const lat = baseLat + driftLat + angleBias * (time / duration) * 10;
+      const lon = baseLon + driftLon + (time / duration) * 20;
+      const eta = Math.max(0, duration - time);
+      return { impactLat: lat, impactLon: lon, eta };
+    }
+
+    /* ===== State ===== */
+    const state = {
+      mode: 'scenario', running: false, time: 0, duration: 120,
+
+      size: 120, speed: 18, approachAngle: 35, density: 3000,
+      mitigation: 'kinetic', mitigationPower: 0.5, leadTime: 15,
+
+      impactLat: 0, impactLon: 0, blastKm: 200, seismicKm: 120, tsunamiKm: 400,
+    };
+
+    /* ===== Scene Setup ===== */
+    const canvas = document.getElementById('c');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setClearColor(0x05070a, 1);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 0, 4.5);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 1.6;
+    controls.maxDistance = 10;
+
+    /* Lights */
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const dir = new THREE.DirectionalLight(0xffffff, 2);
+    dir.position.set(5, 3, 5);
+    scene.add(dir);
+
+    /* Stars (simple) */
+    {
+      const g = new THREE.BufferGeometry();
+      const cnt = 1500, pos = new Float32Array(cnt * 3);
+      for (let i = 0; i < cnt; i++) {
+        const r = 40 + Math.random() * 20, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+        pos[i * 3 + 0] = r * Math.sin(ph) * Math.cos(th);
+        pos[i * 3 + 1] = r * Math.cos(ph);
+        pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+      }
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const m = new THREE.PointsMaterial({ size: 0.05, color: 0xffffff });
+      const stars = new THREE.Points(g, m);
+      scene.add(stars);
+    }
+
+    /* Earth */
+    let earthMesh;
+    let baseMap = null, specMap = null;
+    function buildEarth(material) {
+      if (earthMesh) scene.remove(earthMesh);
+      earthMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 128), material);
+      scene.add(earthMesh);
+    }
+    async function loadTextures() {
+      try {
+        const loader = new THREE.TextureLoader();
+        const base = await new Promise((res, rej) => loader.load(
+          'https://unpkg.com/three-globe@2.30.0/example/img/earth-blue-marble.jpg',
+          t => res(t), undefined, e => rej(e)
+        ));
+        base.colorSpace = THREE.SRGBColorSpace;
+        baseMap = base;
+      } catch (e) { baseMap = null; }
+      try {
+        const spec = await new Promise((res, rej) => new THREE.TextureLoader().load(
+          'https://unpkg.com/three-globe@2.30.0/example/img/earth-night.jpg',
+          t => res(t), undefined, e => rej(e)
+        ));
+        specMap = spec;
+      } catch (e) { specMap = null; }
+
+      const mat = baseMap
+        ? new THREE.MeshPhongMaterial({ map: baseMap, specularMap: specMap || undefined, shininess: 8 })
+        : new THREE.MeshStandardMaterial({ color: '#2b6cff', metalness: 0.1, roughness: 0.6 });
+
+      buildEarth(mat);
+    }
+    await loadTextures();
+
+    /* Asteroid + trajectory */
+    const asteroid = new THREE.Mesh(new THREE.IcosahedronGeometry(0.05, 1),
+      new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.9, metalness: 0.1 })
+    );
+    scene.add(asteroid);
+
+    let trail;
+    function rebuildTrail(endLat, endLon) {
+      if (trail) scene.remove(trail);
+      const start = new THREE.Vector3(-3, 1.5, 2.5);
+      const end = latLonToVector3(endLat, endLon, 1.02);
+      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5).add(new THREE.Vector3(0.5, 0.2, -0.4));
+      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+      const pts = curve.getPoints(120);
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({ color: 0x66e0ff, transparent: true, opacity: .9 });
+      trail = new THREE.Line(geo, mat);
+      trail.renderOrder = 999; // draw above earth
+      scene.add(trail);
+    }
+
+    /* Overlays (blast/seismic/tsunami) as circles on sphere */
+    let overlayGroup = new THREE.Group(); scene.add(overlayGroup);
+    function circlePoints(lat, lon, radiusKm, altitude = 1.004, segments = 256) {
+      const arr = [];
+      const earthR = 6371;
+      const deg = (radiusKm / earthR) * 180 / Math.PI;
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments * Math.PI * 2;
+        const dLat = deg * Math.cos(t);
+        const dLon = deg * Math.sin(t);
+        arr.push(latLonToVector3(lat + dLat, lon + dLon, altitude));
+      }
+      return arr;
+    }
+    function rebuildOverlays() {
+      scene.remove(overlayGroup);
+      overlayGroup = new THREE.Group();
+      const make = (color, pts) => {
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: .9, depthTest: false });
+        const ln = new THREE.Line(geo, mat); ln.renderOrder = 999;
+        overlayGroup.add(ln);
+      };
+      make(0xffb86c, circlePoints(state.impactLat, state.impactLon, state.blastKm, 1.002));
+      make(0xf8f8f2, circlePoints(state.impactLat, state.impactLon, state.seismicKm, 1.003));
+      make(0x66e0ff, circlePoints(state.impactLat, state.impactLon, state.tsunamiKm, 1.004));
+      scene.add(overlayGroup);
+    }
+
+    /* Postprocessing (Bloom) */
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.8, 0.85);
+    composer.addPass(bloom);
+
+    /* ===== UI wiring ===== */
+    const el = (id) => document.getElementById(id);
+    const sizeEl = el('size'), speedEl = el('speed'), angleEl = el('angle'), denEl = el('density');
+    const powerEl = el('power'), leadEl = el('lead'), timeScrub = el('timeScrub');
+    const startBtn = el('startBtn'), resetBtn = el('resetBtn');
+    const vSize = el('vSize'), vSpeed = el('vSpeed'), vAng = el('vAng'), vDen = el('vDen'), vPower = el('vPower'), vLead = el('vLead');
+    const sSpeed = el('sSpeed'), sSize = el('sSize'), sDen = el('sDen'), sETA = el('sETA'), sEnergy = el('sEnergy'), sCrater = el('sCrater');
+    el('vDuration').textContent = state.duration.toFixed(0);
+
+    function updateDerived() {
+      const energy = estimateEnergyMtTNT(state.size, state.density, state.speed);
+      const crater = craterSizeKm(energy);
+      state.blastKm = 80 + energy * 5;
+      state.seismicKm = 40 + energy * 2;
+      state.tsunamiKm = 120 + energy * 6;
+      sSpeed.textContent = `${state.speed.toFixed(1)} km/s`;
+      sSize.textContent = `${state.size.toFixed(1)} m`;
+      sDen.textContent = `${state.density.toFixed(0)} kg/m³`;
+      sEnergy.textContent = `${energy.toFixed(2)} Mt TNT`;
+      sCrater.textContent = `${crater.toFixed(2)} km`;
+    }
+    function refreshUIValues() {
+      vSize.textContent = state.size.toFixed(0);
+      vSpeed.textContent = state.speed.toFixed(1);
+      vAng.textContent = state.approachAngle.toFixed(0);
+      vDen.textContent = state.density.toFixed(0);
+      vPower.textContent = state.mitigationPower.toFixed(2);
+      vLead.textContent = state.leadTime.toFixed(0);
+      el('vTime').textContent = state.time.toFixed(1);
+      sETA.textContent = `${Math.max(0, (state.duration - state.time)).toFixed(1)} s`;
+    }
+
+    function pickMit(id) {
+      state.mitigation = id;
+      document.querySelectorAll('.mitigation .btn').forEach(b => b.classList.remove('active'));
+      if (id === 'kinetic') el('mitKinetic').classList.add('active');
+      if (id === 'tractor') el('mitTractor').classList.add('active');
+      if (id === 'laser') el('mitLaser').classList.add('active');
+    }
+
+    sizeEl.addEventListener('input', e => { state.size = +e.target.value; updateDerived(); rebuildOverlays(); refreshUIValues(); });
+    speedEl.addEventListener('input', e => { state.speed = +e.target.value; updateDerived(); rebuildOverlays(); refreshUIValues(); });
+    angleEl.addEventListener('input', e => { state.approachAngle = +e.target.value; refreshUIValues(); });
+    denEl.addEventListener('input', e => { state.density = +e.target.value; updateDerived(); rebuildOverlays(); refreshUIValues(); });
+    powerEl.addEventListener('input', e => { state.mitigationPower = +e.target.value; refreshUIValues(); });
+    leadEl.addEventListener('input', e => { state.leadTime = +e.target.value; refreshUIValues(); });
+
+    timeScrub.addEventListener('input', e => { state.time = +e.target.value; refreshUIValues(); });
+
+    el('mitKinetic').addEventListener('click', () => pickMit('kinetic'));
+    el('mitTractor').addEventListener('click', () => pickMit('tractor'));
+    el('mitLaser').addEventListener('click', () => pickMit('laser'));
+
+    startBtn.addEventListener('click', () => {
+      state.running = !state.running;
+      startBtn.textContent = state.running ? 'Pause' : 'Start';
+    });
+    resetBtn.addEventListener('click', () => {
+      state.running = false; startBtn.textContent = 'Start';
+      state.time = 0; timeScrub.value = '0'; refreshUIValues();
+    });
+
+    /* ===== Simulation loop ===== */
+    let last = performance.now();
+    function frame(now) {
+      const dt = (now - last) / 1000; last = now;
+
+      if (state.running) {
+        state.time = Math.min(state.duration, state.time + dt);
+        timeScrub.value = String(state.time);
+        el('vTime').textContent = state.time.toFixed(1);
+      }
+
+      // Compute impact point (changes with mitigation/time)
+      const { impactLat, impactLon, eta } = simplePathAtTime({
+        time: state.time, duration: state.duration,
+        approachAngleDeg: state.approachAngle,
+        leadTime: state.leadTime, mitigation: state.mitigation,
+        mitigationPower: state.mitigationPower
+      });
+      state.impactLat = impactLat; state.impactLon = impactLon;
+      sETA.textContent = `${eta.toFixed(1)} s`;
+
+      // Update asteroid along curve
+      const start = new THREE.Vector3(-3, 1.5, 2.5);
+      const end = latLonToVector3(impactLat, impactLon, 1.02);
+      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5).add(new THREE.Vector3(0.5, 0.2, -0.4));
+      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+      const t = Math.min(state.time / state.duration, 1);
+      const pos = curve.getPoint(t);
+      asteroid.position.copy(pos);
+      asteroid.rotation.x += dt * 1.5;
+      asteroid.rotation.y += dt;
+
+      // Rebuild trail and overlays occasionally (cheap and keeps visuals synced)
+      if (!trail || (Math.floor(now / 250) % 2 === 0)) { rebuildTrail(impactLat, impactLon); }
+      if (Math.floor(now / 500) % 2 === 0) { rebuildOverlays(); }
+
+      controls.update();
+      composer.render();
+      requestAnimationFrame(frame);
+    }
+
+    /* ===== Init ===== */
+    updateDerived(); refreshUIValues(); rebuildTrail(10, 70); rebuildOverlays();
+    requestAnimationFrame(frame);
+
+    /* Resize */
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth, h = window.innerHeight;
+      renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+      composer.setSize(w, h);
+    });
+  </script>
+</body>
+
+</html>
